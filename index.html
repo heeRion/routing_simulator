@@ -13,7 +13,7 @@
         <button onclick="addDevice('switch')">Add Switch</button>
         <button onclick="addDevice('pc')">Add PC</button>
         <button onclick="startSimulation()">Start Simulation</button>
-        <button onclick="connectDevices()">Connect Devices</button>
+        <button onclick="enableConnectionMode()">Connect Devices</button>
     </div>
     <div id="workspace" ondrop="drop(event)" ondragover="allowDrop(event)" oncontextmenu="showContextMenu(event)">
         <svg id="connectionLayer"></svg>
@@ -33,6 +33,15 @@
         </div>
     </div>
 
+    <div id="routerCommandModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeRouterCommandModal()">&times;</span>
+            <h3>Router CLI</h3>
+            <div id="cliOutput" class="cli-output"></div>
+            <input id="cliInput" type="text" placeholder="Enter command" onkeydown="handleCLIInput(event)">
+        </div>
+    </div>
+
     <div id="contextMenu" class="context-menu">
         <button onclick="deleteDevice()">Delete Device</button>
     </div>
@@ -40,4 +49,3 @@
     <script src="script.js"></script>
 </body>
 </html>
-
