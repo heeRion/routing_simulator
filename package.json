@@ -1,0 +1,25 @@
+{
+  "name": "routing_simulator",
+  "version": "1.0.0",
+  "description": "routing simulator",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/heeRion/routing_simulator.git"
+  },
+  "keywords": [
+    "routing"
+  ],
+  "author": "doheeim",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/heeRion/routing_simulator/issues"
+  },
+  "homepage": "https://github.com/heeRion/routing_simulator#readme",
+  "dependencies": {
+    "node.js": "^0.0.1-security"
+  }
+}
