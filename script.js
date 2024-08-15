@@ -118,7 +118,7 @@ function createConnection(device1, device2) {
 
     // 장치 중앙 계산
     const x1 = device1Pos.left + device1Pos.width / 2;
-    const y1 = device2Pos.top + device2Pos.height / 2;
+    const y1 = device1Pos.top + device1Pos.height / 2;
     const x2 = device2Pos.left + device2Pos.width / 2;
     const y2 = device2Pos.top + device2Pos.height / 2;
 
@@ -220,89 +220,108 @@ function updateCLIOutput() {
 function processCLICommand(command) {
     let output = '';
 
-    // 기본 명령어 처리
-    if (command === 'enable'||command === 'en') {
-        currentCLIState = cliStates.PRIVILEGED_EXEC;
-    } 
-    else if (command === 'configure terminal' || command === 'conf t') {
-        currentCLIState = cliStates.GLOBAL_CONFIG;
-    } 
-    else if (command.startsWith('interface') || command.startsWith('int')) {
-        currentCLIState = cliStates.INTERFACE_CONFIG;
-        const interfaceName = command.split(' ')[1];
-        if (!selectedDevice.interfaces[interfaceName]) {
-            selectedDevice.interfaces[interfaceName] = { ip: '', subnet: '', status: 'administratively down' };
-        }
-        output = `Configuring interface ${interfaceName}`;
-    } else if (command.startsWith('ip address') || command.startsWith('ip add')) {
-        const parts = command.split(' ');
-        const ip = parts[2];
-        const subnet = parts[3];
-        const interfaceName = Object.keys(selectedDevice.interfaces).pop();
-        selectedDevice.interfaces[interfaceName].ip = ip;
-        selectedDevice.interfaces[interfaceName].subnet = subnet;
-        output = `Assigned IP address ${ip} with subnet mask ${subnet} to ${interfaceName}`;
-    } 
-    else if (command === 'no shutdown' || command === 'no sh') {
-        const interfaceName = Object.keys(selectedDevice.interfaces).pop();
-        selectedDevice.interfaces[interfaceName].status = 'up';
-        output = `${interfaceName} is now up`;
+    const [cmd, ...args] = command.split(' ');
 
-    // RIP 라우팅 처리
-    } else if (command.startsWith('router rip')) {
-        currentCLIState = cliStates.ROUTER_CONFIG;
-        selectedDevice.routing.protocol = 'rip';
-        output = 'Entered RIP routing configuration mode';
-    } else if (command.startsWith('network')) {
-        const network = command.split(' ')[1];
-        selectedDevice.routing.networks = selectedDevice.routing.networks || [];
-        selectedDevice.routing.networks.push(network);
-        output = `Added network ${network} to RIP routing protocol`;
-
-    // OSPF 라우팅 처리
-    } else if (command.startsWith('router ospf')) {
-        const processId = command.split(' ')[2];
-        currentCLIState = cliStates.ROUTER_CONFIG;
-        selectedDevice.routing.protocol = 'ospf';
-        selectedDevice.routing.processId = processId;
-        output = `Entered OSPF routing configuration mode with process ID ${processId}`;
-    } else if (command.startsWith('network') && selectedDevice.routing.protocol === 'ospf') {
-        const parts = command.split(' ');
-        const network = parts[1];
-        const wildcard = parts[2];
-        const area = parts[4];
-        selectedDevice.routing.networks = selectedDevice.routing.networks || [];
-        selectedDevice.routing.networks.push({ network, wildcard, area });
-        output = `Added network ${network} with wildcard ${wildcard} to OSPF area ${area}`;
-
-    // Static 라우팅 처리
-    } else if (command.startsWith('ip route')) {
-        const parts = command.split(' ');
-        const destination = parts[2];
-        const mask = parts[3];
-        const nextHop = parts[4];
-        selectedDevice.routing.staticRoutes = selectedDevice.routing.staticRoutes || [];
-        selectedDevice.routing.staticRoutes.push({ destination, mask, nextHop });
-        output = `Added static route to ${destination} via ${nextHop} with mask ${mask}`;
-
-    // Show ip interface brief 처리
-    } else if (command === 'show ip interface brief') {
-        output = 'Interface\t\tIP Address\t\tStatus\n';
-        for (const [iface, config] of Object.entries(selectedDevice.interfaces)) {
-            output += `${iface}\t\t${config.ip || 'unassigned'}\t\t${config.status}\n`;
-        }
-
-    // 상태 전환 및 종료
-    } else if (command === 'exit' || command === 'ex') {
-        if (currentCLIState === cliStates.INTERFACE_CONFIG || currentCLIState === cliStates.ROUTER_CONFIG) {
-            currentCLIState = cliStates.GLOBAL_CONFIG;
-        } else if (currentCLIState === cliStates.GLOBAL_CONFIG) {
+    switch (cmd) {
+        case 'enable':
+        case 'en':
             currentCLIState = cliStates.PRIVILEGED_EXEC;
-        } else {
-            currentCLIState = cliStates.EXEC;
-        }
-    } else {
-        output = '% Invalid input detected at \'^\' marker.';
+            break;
+
+        case 'configure':
+        case 'conf':
+            if (args[0] === 'terminal' || args[0] === 't') {
+                currentCLIState = cliStates.GLOBAL_CONFIG;
+            }
+            break;
+
+        case 'interface':
+        case 'int':
+            currentCLIState = cliStates.INTERFACE_CONFIG;
+            const interfaceName = args[0];
+            if (!selectedDevice.interfaces[interfaceName]) {
+                selectedDevice.interfaces[interfaceName] = { ip: '', subnet: '', status: 'administratively down' };
+            }
+            output = `Configuring interface ${interfaceName}`;
+            break;
+
+        case 'ip':
+            if (args[0] === 'address' || args[0] === 'add') {
+                const [ip, subnet] = args.slice(1);
+                const interfaceName = Object.keys(selectedDevice.interfaces).pop();
+                selectedDevice.interfaces[interfaceName].ip = ip;
+                selectedDevice.interfaces[interfaceName].subnet = subnet;
+                output = `Assigned IP address ${ip} with subnet mask ${subnet} to ${interfaceName}`;
+            }
+            break;
+
+        case 'no':
+            if (args[0] === 'shutdown' || args[0] === 'sh') {
+                const interfaceName = Object.keys(selectedDevice.interfaces).pop();
+                selectedDevice.interfaces[interfaceName].status = 'up';
+                output = `${interfaceName} is now up`;
+            }
+            break;
+
+        case 'router':
+            if (args[0] === 'rip') {
+                currentCLIState = cliStates.ROUTER_CONFIG;
+                selectedDevice.routing.protocol = 'rip';
+                output = 'Entered RIP routing configuration mode';
+            } else if (args[0] === 'ospf') {
+                const processId = args[1];
+                currentCLIState = cliStates.ROUTER_CONFIG;
+                selectedDevice.routing.protocol = 'ospf';
+                selectedDevice.routing.processId = processId;
+                output = `Entered OSPF routing configuration mode with process ID ${processId}`;
+            }
+            break;
+
+        case 'network':
+            if (selectedDevice.routing.protocol === 'rip') {
+                selectedDevice.routing.networks = selectedDevice.routing.networks || [];
+                selectedDevice.routing.networks.push(args[0]);
+                output = `Added network ${args[0]} to RIP routing protocol`;
+            } else if (selectedDevice.routing.protocol === 'ospf') {
+                const [network, wildcard, area] = args;
+                selectedDevice.routing.networks = selectedDevice.routing.networks || [];
+                selectedDevice.routing.networks.push({ network, wildcard, area });
+                output = `Added network ${network} with wildcard ${wildcard} to OSPF area ${area}`;
+            }
+            break;
+
+        case 'ip':
+            if (args[0] === 'route') {
+                const [destination, mask, nextHop] = args.slice(1);
+                selectedDevice.routing.staticRoutes = selectedDevice.routing.staticRoutes || [];
+                selectedDevice.routing.staticRoutes.push({ destination, mask, nextHop });
+                output = `Added static route to ${destination} via ${nextHop} with mask ${mask}`;
+            }
+            break;
+
+        case 'show':
+            if (args[0] === 'ip' && args[1] === 'interface' && args[2] === 'brief') {
+                output = 'Interface\t\tIP Address\t\tStatus\n';
+                for (const [iface, config] of Object.entries(selectedDevice.interfaces)) {
+                    output += `${iface}\t\t${config.ip || 'unassigned'}\t\t${config.status}\n`;
+                }
+            }
+            break;
+
+        case 'exit':
+        case 'ex':
+            if (currentCLIState === cliStates.INTERFACE_CONFIG || currentCLIState === cliStates.ROUTER_CONFIG) {
+                currentCLIState = cliStates.GLOBAL_CONFIG;
+            } else if (currentCLIState === cliStates.GLOBAL_CONFIG) {
+                currentCLIState = cliStates.PRIVILEGED_EXEC;
+            } else {
+                currentCLIState = cliStates.EXEC;
+            }
+            break;
+
+        default:
+            output = '% Invalid input detected at \'^\' marker.';
+            break;
     }
 
     selectedDevice.cliHistory.push({ command: output, state: currentCLIState });
