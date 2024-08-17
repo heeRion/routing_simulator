@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Simulator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="toolbar">
+        <h1>Network Simulator</h1>
+        <button onclick="addDevice('router')">Add Router</button>
+        <button onclick="addDevice('switch')">Add Switch</button>
+        <button onclick="addDevice('pc')">Add PC</button>
+        <button onclick="startSimulation()">Start Simulation</button>
+        <button onclick="enableConnectionMode()">Connect Devices</button>
+    </div>
+    <div id="workspace" ondrop="drop(event)" ondragover="allowDrop(event)" oncontextmenu="showContextMenu(event)">
+        <svg id="connectionLayer"></svg>
+    </div>
+
+    <div id="propertyModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h3>Device Properties</h3>
+            <form id="propertyForm">
+                <label for="ip">IP Address:</label>
+                <input type="text" id="ip" name="ip"><br>
+                <label for="subnet">Subnet Mask:</label>
+                <input type="text" id="subnet" name="subnet"><br>
+                <label for="gateway">Gateway:</label>
+                <input type="text" id="gateway" name="gateway"><br>
+                <button type="button" onclick="saveProperties()">Save</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="routerCommandModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeRouterCommandModal()">&times;</span>
+            <h3>Router CLI</h3>
+            <div id="cliOutput" class="cli-output"></div>
+            <input id="cliInput" type="text" placeholder="Enter command" onkeydown="handleCLIInput(event)">
+        </div>
+    </div>
+
+    <div id="contextMenu" class="context-menu">
+        <button onclick="deleteDevice()">Delete Device</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
