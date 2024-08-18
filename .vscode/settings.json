@@ -3,6 +3,7 @@
         "CNTL",
         "doheeim",
         "OSPF",
-        "switchport"
+        "switchport",
+        "teamlog"
     ]
 }
