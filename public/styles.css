@@ -68,17 +68,22 @@ body {
 
 .device.router {
     background-color: #e74c3c;
-    color: white;
+    color: black;
 }
 
 .device.switch {
     background-color: #f1c40f;
-    color: white;
+    color: black;
 }
 
 .device.pc {
     background-color: #3498db;
-    color: white;
+    color: black;
+}
+
+.device.server{
+    background-color: darkorange;
+    color:black;
 }
 
 .device:hover {
@@ -231,4 +236,19 @@ textarea {
     border: 1px solid #ccc;
     border-radius: 4px;
     font-family: monospace;
+}
+
+.packet {
+    width: 10px;
+    height: 10px;
+    background-color: #e74c3c;
+    border-radius: 50%;
+    position: absolute;
+    z-index: 1000;
+}
+
+.connection {
+    stroke: #3498db;
+    stroke-width: 2px;
+    fill: none;
 }
