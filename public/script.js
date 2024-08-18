@@ -156,14 +156,14 @@ function updateConnections() {
     });
 }
 
-// 시뮬레이션 시작
+// startSimulation 함수 수정
 function startSimulation() {
     console.log('Starting simulation...');
     devices.forEach(device => {
         console.log(`Device ${device.id} (${device.type}) - IP: ${device.ip}, Subnet: ${device.subnet}, Gateway: ${device.gateway}`);
     });
 
-    // 패킷 전송 경로 시뮬레이션
+    // 패킷 전송 시뮬레이션
     devices.forEach(device => {
         if (device.type === 'pc') {
             const gateway = devices.find(d => d.ip === device.gateway);
@@ -171,6 +171,7 @@ function startSimulation() {
                 console.log(`PC ${device.id} sends packet to gateway ${gateway.id}`);
                 const route = findPath(device.id, gateway.id);
                 console.log(`Path from PC ${device.id} to gateway ${gateway.id}: ${route.join(' -> ')}`);
+                animatePacket(route);
             }
         }
     });
@@ -178,11 +179,69 @@ function startSimulation() {
     connections.forEach(conn => {
         console.log(`Connection from ${conn.from} to ${conn.to}`);
     });
-
-    if (connections.length > 0) {
-        console.log('Simulating packet transmission...');
-    }
 }
+
+function animatePacket(route) {
+    if (animatingPacket) return;
+    animatingPacket = true;
+
+    const workspace = document.getElementById('workspace');
+    packetElement = document.createElement('div');
+    packetElement.className = 'packet';
+    workspace.appendChild(packetElement);
+
+    let currentIndex = 0;
+    function movePacket() {
+        if (currentIndex >= route.length - 1) {
+            workspace.removeChild(packetElement);
+            animatingPacket = false;
+            return;
+        }
+
+        const currentDevice = document.querySelector(`[data-id="${route[currentIndex]}"]`);
+        const nextDevice = document.querySelector(`[data-id="${route[currentIndex + 1]}"]`);
+
+        const currentRect = currentDevice.getBoundingClientRect();
+        const nextRect = nextDevice.getBoundingClientRect();
+
+        const startX = currentRect.left + currentRect.width / 2;
+        const startY = currentRect.top + currentRect.height / 2;
+        const endX = nextRect.left + nextRect.width / 2;
+        const endY = nextRect.top + nextRect.height / 2;
+
+        animatePacketMovement(startX, startY, endX, endY, () => {
+            currentIndex++;
+            movePacket();
+        });
+    }
+
+    movePacket();
+}
+
+function animatePacketMovement(startX, startY, endX, endY, callback) {
+    const duration = 1000; // 1 second
+    const startTime = performance.now();
+
+    function step(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        const x = startX + (endX - startX) * progress;
+        const y = startY + (endY - startY) * progress;
+
+        packetElement.style.left = `${x}px`;
+        packetElement.style.top = `${y}px`;
+
+        if (progress < 1) {
+            requestAnimationFrame(step);
+        } else {
+            callback();
+        }
+    }
+
+    requestAnimationFrame(step);
+}
+
 
 // 경로 찾기
 function findPath(startId, endId) {
@@ -253,26 +312,33 @@ function addDevice(type) {
     workspace.appendChild(device);
 }
 
-// 연결 생성 함수 (포트 표시)
+
+// createConnection 장치 연결 함수 
 function createConnection(device1, device2) {
     const connectionLayer = document.getElementById('connectionLayer');
-    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
 
-    const device1Pos = device1.getBoundingClientRect();
-    const device2Pos = device2.getBoundingClientRect();
+    const device1Rect = device1.getBoundingClientRect();
+    const device2Rect = device2.getBoundingClientRect();
 
-    const x1 = device1Pos.left + device1Pos.width / 2;
-    const y1 = device1Pos.top + device1Pos.height / 2;
-    const x2 = device2Pos.left + device2Pos.width / 2;
-    const y2 = device2Pos.top + device2Pos.height / 2;
+    const x1 = device1Rect.left + device1Rect.width / 2;
+    const y1 = device1Rect.top + device1Rect.height / 2;
+    const x2 = device2Rect.left + device2Rect.width / 2;
+    const y2 = device2Rect.top + device2Rect.height / 2;
 
-    line.setAttribute('x1', x1);
-    line.setAttribute('y1', y1);
-    line.setAttribute('x2', x2);
-    line.setAttribute('y2', y2);
+    const midX = (x1 + x2) / 2;
+    const midY = (y1 + y2) / 2;
+
+    const curveX = midX + (y2 - y1) / 4;
+    const curveY = midY - (x2 - x1) / 4;
+
+    const d = `M ${x1} ${y1} Q ${curveX} ${curveY} ${x2} ${y2}`;
+
+    line.setAttribute('d', d);
     line.classList.add('connection');
-    line.style.stroke = '#3498db'; 
-    line.style.strokeWidth = '2px'; 
+    line.style.stroke = '#3498db';
+    line.style.strokeWidth = '2px';
+    line.style.fill = 'none';
 
     connectionLayer.appendChild(line);
     connections.push({ from: device1.getAttribute('data-id'), to: device2.getAttribute('data-id'), line: line });
@@ -476,10 +542,22 @@ function hideContextMenu() {
 // 장치 삭제
 function deleteDevice() {
     if (selectedDevice) {
-        document.querySelector(`[data-id='${selectedDevice.id}']`).remove();
+        const deviceElement = document.querySelector(`[data-id="${selectedDevice.id}"]`);
+        if (deviceElement) {
+            deviceElement.remove();
+        }
+
+        // 이 장치와 관련된 연결 제거
+        connections = connections.filter(conn => {
+            if (conn.from === selectedDevice.id || conn.to === selectedDevice.id) {
+                conn.line.remove();
+                return false;
+            }
+            return true;
+        });
+
         devices = devices.filter(d => d.id !== selectedDevice.id);
-        connections = connections.filter(conn => conn.from !== selectedDevice.id && conn.to !== selectedDevice.id);
-        updateConnections();
+        selectedDevice = null;
         closeContextMenu();
     }
 }
@@ -487,6 +565,11 @@ function deleteDevice() {
 // 콘텍스트 메뉴 닫기
 function closeContextMenu() {
     contextMenu.style.display = 'none';
+    document.addEventListener('DOMContentLoaded', () => {
+
+    const deleteOption = document.getElementById('deleteDevice');
+    deleteOption.addEventListener('click', deleteDevice);
+    });
 }
 
 // 이벤트 핸들러 등록
@@ -513,153 +596,3 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('startSimulation').addEventListener('click', startSimulation);
     document.getElementById('enableConnection').addEventListener('click', enableConnectionMode);
 });
-
-
-// // startSimulation 함수 수정
-// function startSimulation() {
-//     console.log('Starting simulation...');
-//     devices.forEach(device => {
-//         console.log(`Device ${device.id} (${device.type}) - IP: ${device.ip}, Subnet: ${device.subnet}, Gateway: ${device.gateway}`);
-//     });
-
-//     // 패킷 전송 시뮬레이션
-//     devices.forEach(device => {
-//         if (device.type === 'pc') {
-//             const gateway = devices.find(d => d.ip === device.gateway);
-//             if (gateway) {
-//                 console.log(`PC ${device.id} sends packet to gateway ${gateway.id}`);
-//                 const route = findPath(device.id, gateway.id);
-//                 console.log(`Path from PC ${device.id} to gateway ${gateway.id}: ${route.join(' -> ')}`);
-//                 animatePacket(route);
-//             }
-//         }
-//     });
-
-//     connections.forEach(conn => {
-//         console.log(`Connection from ${conn.from} to ${conn.to}`);
-//     });
-// }
-
-// function animatePacket(route) {
-//     if (animatingPacket) return;
-//     animatingPacket = true;
-
-//     const workspace = document.getElementById('workspace');
-//     packetElement = document.createElement('div');
-//     packetElement.className = 'packet';
-//     workspace.appendChild(packetElement);
-
-//     let currentIndex = 0;
-//     function movePacket() {
-//         if (currentIndex >= route.length - 1) {
-//             workspace.removeChild(packetElement);
-//             animatingPacket = false;
-//             return;
-//         }
-
-//         const currentDevice = document.querySelector(`[data-id="${route[currentIndex]}"]`);
-//         const nextDevice = document.querySelector(`[data-id="${route[currentIndex + 1]}"]`);
-
-//         const currentRect = currentDevice.getBoundingClientRect();
-//         const nextRect = nextDevice.getBoundingClientRect();
-
-//         const startX = currentRect.left + currentRect.width / 2;
-//         const startY = currentRect.top + currentRect.height / 2;
-//         const endX = nextRect.left + nextRect.width / 2;
-//         const endY = nextRect.top + nextRect.height / 2;
-
-//         animatePacketMovement(startX, startY, endX, endY, () => {
-//             currentIndex++;
-//             movePacket();
-//         });
-//     }
-
-//     movePacket();
-// }
-
-// function animatePacketMovement(startX, startY, endX, endY, callback) {
-//     const duration = 1000; // 1 second
-//     const startTime = performance.now();
-
-//     function step(currentTime) {
-//         const elapsed = currentTime - startTime;
-//         const progress = Math.min(elapsed / duration, 1);
-
-//         const x = startX + (endX - startX) * progress;
-//         const y = startY + (endY - startY) * progress;
-
-//         packetElement.style.left = `${x}px`;
-//         packetElement.style.top = `${y}px`;
-
-//         if (progress < 1) {
-//             requestAnimationFrame(step);
-//         } else {
-//             callback();
-//         }
-//     }
-
-//     requestAnimationFrame(step);
-// }
-
-// // createConnection 함수 수정
-// function createConnection(device1, device2) {
-//     const connectionLayer = document.getElementById('connectionLayer');
-//     const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
-
-//     const device1Rect = device1.getBoundingClientRect();
-//     const device2Rect = device2.getBoundingClientRect();
-
-//     const x1 = device1Rect.left + device1Rect.width / 2;
-//     const y1 = device1Rect.top + device1Rect.height / 2;
-//     const x2 = device2Rect.left + device2Rect.width / 2;
-//     const y2 = device2Rect.top + device2Rect.height / 2;
-
-//     const midX = (x1 + x2) / 2;
-//     const midY = (y1 + y2) / 2;
-
-//     const curveX = midX + (y2 - y1) / 4;
-//     const curveY = midY - (x2 - x1) / 4;
-
-//     const d = `M ${x1} ${y1} Q ${curveX} ${curveY} ${x2} ${y2}`;
-
-//     line.setAttribute('d', d);
-//     line.classList.add('connection');
-//     line.style.stroke = '#3498db';
-//     line.style.strokeWidth = '2px';
-//     line.style.fill = 'none';
-
-//     connectionLayer.appendChild(line);
-//     connections.push({ from: device1.getAttribute('data-id'), to: device2.getAttribute('data-id'), line: line });
-
-//     updatePortConnection(device1, device2);
-// }
-
-// // 장치 삭제를 위한 새로운 기능 추가
-// function deleteDevice() {
-//     if (selectedDevice) {
-//         const deviceElement = document.querySelector(`[data-id="${selectedDevice.id}"]`);
-//         if (deviceElement) {
-//             deviceElement.remove();
-//         }
-
-//         // 이 장치와 관련된 연결 제거
-//         connections = connections.filter(conn => {
-//             if (conn.from === selectedDevice.id || conn.to === selectedDevice.id) {
-//                 conn.line.remove();
-//                 return false;
-//             }
-//             return true;
-//         });
-
-//         devices = devices.filter(d => d.id !== selectedDevice.id);
-//         selectedDevice = null;
-//         closeContextMenu();
-//     }
-// }
-
-// // 컨텍스트 메뉴에서 삭제 옵션에 대한 이벤트 리스너 추가
-// document.addEventListener('DOMContentLoaded', () => {
-
-//     const deleteOption = document.getElementById('deleteDevice');
-//     deleteOption.addEventListener('click', deleteDevice);
-// });
