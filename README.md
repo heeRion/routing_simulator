@@ -1,4 +1,4 @@
-# network simulator
+# 🖥️ network simulator - teamlog summer vacation project
 백엔드는 기본적인 구조만 구축되어있음 😢
 
 ## HTML
@@ -45,5 +45,4 @@
 - 케이블 연결 시 포트 선택할 수 있도록 수정 예정
 - connect device 연결 후 케이블 엇갈림 수정 예정
 - 장치 이동 부드럽게 수정 예정
-- start simulation시 패킷 이동경로 보일 수 있도록 수정 예정
 - 사용 방법 추가 예정
