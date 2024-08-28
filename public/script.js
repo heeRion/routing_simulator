@@ -238,7 +238,6 @@ function animatePacketMovement(startX, startY, endX, endY, callback) {
             callback();
         }
     }
-
     requestAnimationFrame(step);
 }
 
@@ -266,7 +265,6 @@ function findPath(startId, endId) {
             }
         });
     }
-
     return path;
 }
 
